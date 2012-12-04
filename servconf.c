@@ -1,4 +1,4 @@
-/* $OpenBSD: servconf.c,v 1.222 2011/06/22 21:57:01 djm Exp $ */
+/* $OpenBSD: servconf.c,v 1.223 2011/09/23 00:22:04 dtucker Exp $ */
 /*
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
  *                    All rights reserved
@@ -45,10 +45,6 @@
 #include "match.h"
 #include "channels.h"
 #include "groupaccess.h"
-
-#ifdef ANDROID
-#include <cutils/properties.h>
-#endif
 
 static void add_listen_addr(ServerOptions *, char *, int);
 static void add_one_listen_addr(ServerOptions *, char *, int);
@@ -1345,7 +1341,7 @@ process_server_config_line(ServerOptions *options, char *line,
 				fatal("%s line %d: missing host in PermitOpen",
 				    filename, linenum);
 			p = cleanhostname(p);
-			if (arg == NULL || (port = a2port(arg)) <= 0)
+			if (arg == NULL || ((port = permitopen_port(arg)) < 0))
 				fatal("%s line %d: bad port number in "
 				    "PermitOpen", filename, linenum);
 			if (*activep && n == -1)
@@ -1459,18 +1455,9 @@ parse_server_match_config(ServerOptions *options, const char *user,
     const char *host, const char *address)
 {
 	ServerOptions mo;
-#ifdef ANDROID
-	char value[PROPERTY_VALUE_MAX];
-#endif
 
 	initialize_server_options(&mo);
 	parse_server_config(&mo, "reprocess config", &cfg, user, host, address);
-#ifdef ANDROID
-	/* Allow root login if ro.debuggable is set */
-	property_get("ro.debuggable", value, "");
-	if (strcmp(value, "1") == 0)
-		mo.permit_root_login = PERMIT_YES;
-#endif
 	copy_set_server_options(options, &mo, 0);
 }
 
